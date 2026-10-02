@@ -322,8 +322,13 @@ class PromptServer():
                         except Exception as e:
                             logging.error(f"Error processing WebSocket message: {e}")
             finally:
-                self.sockets.pop(sid, None)
-                self.sockets_metadata.pop(sid, None)
+                # A client that reconnects with the same clientId replaces this socket
+                # in self.sockets. Only clean up if the entry is still this socket:
+                # otherwise the old connection's teardown unregisters the live
+                # replacement, which then stays open but silently receives nothing.
+                if self.sockets.get(sid) is ws:
+                    self.sockets.pop(sid, None)
+                    self.sockets_metadata.pop(sid, None)
             return ws
 
         @routes.get("/")
